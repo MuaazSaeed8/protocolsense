@@ -178,7 +178,20 @@ export const App: React.FC = () => {
   const completeOnboarding = () => { localStorage.setItem(ONBOARDING_KEY, 'true'); setTourIndex(-1); };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    // Surface any auth errors returned in the URL (implicit flow puts errors in hash)
+    const hash = window.location.hash;
+    const query = window.location.search;
+    const params = new URLSearchParams(hash.startsWith('#') ? hash.slice(1) : query.slice(1));
+    const authError = params.get('error_description') || params.get('error');
+    if (authError) {
+      setToast('Sign-in error: ' + decodeURIComponent(authError.replace(/\+/g, ' ')));
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) setToast('Auth error: ' + error.message);
+      setUser(session?.user ?? null);
+    });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
