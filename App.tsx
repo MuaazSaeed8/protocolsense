@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { User } from '@supabase/supabase-js';
 import { ExamplePair, AnalysisResult, AnalysisStatus, ExtractedExample, ChatMessage, Scenario } from './types';
 import ExampleInput from './components/ExampleInput';
 import ConfidenceBar from './components/ConfidenceBar';
@@ -6,6 +7,8 @@ import FormattedMessage from './components/FormattedMessage';
 import WithTooltip from './components/WithTooltip';
 import SectionHeader from './components/SectionHeader';
 import { analyzeProtocol, generateDocumentation, extractDataFromText, askAiAboutProtocol } from './services/geminiService';
+import { supabase } from './lib/supabase';
+import HistoryPanel from './components/HistoryPanel';
 
 // Modals
 import DemoModal from './components/modals/DemoModal';
@@ -103,6 +106,11 @@ export const App: React.FC = () => {
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedPreview, setExtractedPreview] = useState<ExtractedExample | null>(null);
 
+  // Auth + save
+  const [user, setUser] = useState<User | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
   const projectIdPlaceholder = useRef(Math.random().toString(36).substr(2, 6).toUpperCase());
   const webhookUrl = `https://api.protocolsense.dev/validate/${projectIdPlaceholder.current}`;
 
@@ -168,6 +176,36 @@ export const App: React.FC = () => {
   }, [tourIndex]);
   
   const completeOnboarding = () => { localStorage.setItem(ONBOARDING_KEY, 'true'); setTourIndex(-1); };
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setUser(session?.user ?? null));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSave = async () => {
+    if (!user || !result) return;
+    setIsSaving(true);
+    const { error } = await supabase.from('protocols').insert({
+      user_id: user.id,
+      name: projectName,
+      examples,
+      result,
+    });
+    setIsSaving(false);
+    setToast(error ? 'Failed to save.' : 'Protocol saved!');
+  };
+
+  const handleLoadProtocol = (name: string, loadedExamples: ExamplePair[], loadedResult: AnalysisResult) => {
+    setProjectName(name);
+    setExamples(loadedExamples);
+    setResult(loadedResult);
+    setStatus(AnalysisStatus.SUCCESS);
+    setError(null);
+    setChatMessages([]);
+  };
 
   const performReset = () => {
     setProjectName('Untitled protocol');
@@ -450,16 +488,52 @@ export const App: React.FC = () => {
              </button>
           </WithTooltip>
 
+          {user && (
+            <WithTooltip text="View saved protocols">
+              <button onClick={() => setShowHistory(true)} className="group cursor-pointer flex items-center gap-2 text-base font-bold text-on-surface/60 px-2 lg:px-3 py-2 hover:text-primary transition-all rounded-full hover:bg-surface-variant/30">
+                <span className="material-symbols-outlined text-2xl">history</span>
+                <span className="hidden lg:block max-w-0 overflow-hidden lg:group-hover:max-w-xs transition-all duration-500 ease-in-out">History</span>
+              </button>
+            </WithTooltip>
+          )}
+
           <div className="w-px h-6 bg-surface-variant/20 hidden lg:block mx-1"></div>
 
           <WithTooltip text="Load sample data to explore features">
-            <button 
-              onClick={() => setShowDemoModal(true)} 
+            <button
+              onClick={() => setShowDemoModal(true)}
               className="bg-primary text-background px-5 py-2.5 rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-sm"
             >
               Try Demo
             </button>
           </WithTooltip>
+
+          {user ? (
+            <div className="flex items-center gap-2 pl-1">
+              {user.user_metadata?.avatar_url ? (
+                <img src={user.user_metadata.avatar_url} alt="" className="w-8 h-8 rounded-full border border-surface-variant/30 shrink-0" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                  {(user.user_metadata?.full_name || user.email || '?')[0].toUpperCase()}
+                </div>
+              )}
+              <span className="hidden lg:block text-sm font-medium text-on-surface/70 max-w-[120px] truncate">{user.user_metadata?.full_name || user.email}</span>
+              <button
+                onClick={() => supabase.auth.signOut()}
+                className="text-sm font-bold text-on-surface-variant hover:text-error transition-colors px-2 py-1 rounded-full hover:bg-error/10"
+              >
+                <span className="material-symbols-outlined text-xl">logout</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })}
+              className="flex items-center gap-2 bg-surface-container border border-surface-variant/30 text-on-surface px-4 py-2 rounded-full text-sm font-bold hover:bg-surface-container-high transition-all"
+            >
+              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Sign in
+            </button>
+          )}
         </div>
       </header>
 
@@ -653,6 +727,24 @@ export const App: React.FC = () => {
 
           {status === AnalysisStatus.SUCCESS && result && (
             <div id="tour-analysis-area" className="space-y-10 lg:space-y-16">
+              <div className="flex items-center justify-between gap-4">
+                <input
+                  value={projectName}
+                  onChange={e => setProjectName(e.target.value)}
+                  className="bg-transparent text-xl lg:text-2xl font-medium tracking-tight focus:outline-none border-b border-transparent hover:border-surface-variant/30 focus:border-primary/30 transition-colors pb-0.5 min-w-0 flex-1"
+                  placeholder="Untitled protocol"
+                />
+                {user && (
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 rounded-full text-sm font-bold transition-all disabled:opacity-50 shrink-0"
+                  >
+                    <span className="material-symbols-outlined text-base">{isSaving ? 'hourglass_empty' : 'save'}</span>
+                    {isSaving ? 'Saving…' : 'Save'}
+                  </button>
+                )}
+              </div>
               <div className="space-y-4">
                  <SectionHeader title="System summary" isExpanded={expandContext} onToggle={() => setExpandContext(!expandContext)} />
                  {expandContext && <h3 className="text-xl lg:text-4xl tracking-tight text-on-surface/90 leading-tight font-medium">{result.system_summary}</h3>}
@@ -844,11 +936,20 @@ export const App: React.FC = () => {
         onDiagnosisComplete={handleDiagnosisComplete}
       />
 
-      <ResetConfirmationModal 
-        isOpen={showResetConfirmation} 
-        onClose={() => setShowResetConfirmation(false)} 
-        onConfirm={performReset} 
+      <ResetConfirmationModal
+        isOpen={showResetConfirmation}
+        onClose={() => setShowResetConfirmation(false)}
+        onConfirm={performReset}
       />
+
+      {user && (
+        <HistoryPanel
+          isOpen={showHistory}
+          onClose={() => setShowHistory(false)}
+          user={user}
+          onLoad={handleLoadProtocol}
+        />
+      )}
 
       {showDocsModal && docsMarkdown && (
          <div className="fixed inset-0 z-[300] bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
