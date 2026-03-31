@@ -70,8 +70,23 @@ const HistoryPanel: React.FC<HistoryPanelProps> = ({ isOpen, onClose, user, onLo
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-3">
           {loading && (
-            <div className="flex items-center justify-center h-40">
-              <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            <div className="space-y-3">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="bg-surface-container rounded-md3-item p-4 space-y-3 animate-pulse">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-2 flex-1">
+                      <div className="h-4 bg-surface-container-high rounded-full w-3/4" />
+                      <div className="h-3 bg-surface-container-high rounded-full w-1/2" />
+                    </div>
+                    <div className="h-6 w-6 bg-surface-container-high rounded-full shrink-0" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="h-3 bg-surface-container-high rounded-full w-full" />
+                    <div className="h-3 bg-surface-container-high rounded-full w-4/5" />
+                  </div>
+                  <div className="h-9 bg-surface-container-high rounded-full w-full" />
+                </div>
+              ))}
             </div>
           )}
 
