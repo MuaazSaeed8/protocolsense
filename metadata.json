@@ -1,0 +1,7 @@
+{
+  "name": "ProtocolSense",
+  "description": "An AI-powered pattern analysis tool that reverse-engineers implicit system rules and protocols from input/output examples.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
