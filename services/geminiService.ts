@@ -1,7 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ExamplePair, AnalysisResult, Rule, TestCase, TestSuite, DiagnosisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let _ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!_ai) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY is not set. Add it to your Vercel environment variables.');
+    _ai = new GoogleGenAI({ apiKey });
+  }
+  return _ai;
+}
 
 // Retry configuration
 const RETRY_ATTEMPTS = 3;
@@ -154,7 +162,7 @@ export async function analyzeProtocol(examples: ExamplePair[]): Promise<Analysis
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
@@ -198,7 +206,7 @@ Return the analysis in JSON format following the provided schema.`;
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
@@ -248,7 +256,7 @@ Return the result in JSON matching the specified schema.`;
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
@@ -280,7 +288,7 @@ export async function extractDataFromText(text: string): Promise<ExtractedExampl
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
@@ -321,7 +329,7 @@ export async function extractDataFromCurl(curl: string, responseText: string): P
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: {
@@ -373,7 +381,7 @@ Format your response exactly like this:
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: prompt,
         config: { temperature: 0.2 }
@@ -413,7 +421,7 @@ export async function generateImplementationCode(
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: { temperature: 0.2 },
@@ -439,7 +447,7 @@ export async function generateDocumentation(
 
   try {
     const response = await withRetry(async () => {
-      return await ai.models.generateContent({
+      return await getAI().models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: { temperature: 0.2 },
@@ -459,7 +467,7 @@ export async function askAiAboutProtocol(
   const systemInstruction = `You are a ProtocolSense Expert. System: ${result.system_summary}`;
 
   try {
-    const chat = ai.chats.create({
+    const chat = getAI().chats.create({
       model: 'gemini-3-flash-preview',
       config: { systemInstruction, temperature: 0.7 },
       history: chatHistory.map(h => ({
