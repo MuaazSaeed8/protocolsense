@@ -34,7 +34,7 @@ const ExampleInput: React.FC<ExampleInputProps> = ({
         <textarea
           value={example.input}
           onChange={(e) => onUpdate(example.id, 'input', e.target.value)}
-          placeholder={customInputPlaceholder || '{ "payload": true }'}
+          placeholder={customInputPlaceholder || 'Paste JSON input...'}
           className="w-full bg-background/40 border border-transparent rounded-xl p-3 text-base code-font focus:bg-background focus:border-primary/10 focus:outline-none min-h-[70px] transition-all"
         />
       </div>
@@ -44,7 +44,7 @@ const ExampleInput: React.FC<ExampleInputProps> = ({
         <textarea
           value={example.output}
           onChange={(e) => onUpdate(example.id, 'output', e.target.value)}
-          placeholder={customOutputPlaceholder || '{ "result": "ok" }'}
+          placeholder={customOutputPlaceholder || 'Paste JSON output...'}
           className="w-full bg-background/40 border border-transparent rounded-xl p-3 text-base code-font focus:bg-background focus:border-primary/10 focus:outline-none min-h-[70px] transition-all"
         />
       </div>

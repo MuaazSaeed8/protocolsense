@@ -16,7 +16,6 @@ import DemoModal from './components/modals/DemoModal';
 import CurlModal from './components/modals/CurlModal';
 import CsvModal from './components/modals/CsvModal';
 import ExportModal from './components/modals/ExportModal';
-import CiCdModal from './components/modals/CiCdModal';
 import CompareModal from './components/modals/CompareModal';
 import ValidationModal from './components/modals/ValidationModal';
 import DiagnosisModal from './components/modals/DiagnosisModal';
@@ -94,7 +93,6 @@ export const App: React.FC = () => {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showCurlModal, setShowCurlModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
-  const [showCiCdModal, setShowCiCdModal] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showDocsModal, setShowDocsModal] = useState(false);
@@ -113,8 +111,6 @@ export const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const projectIdPlaceholder = useRef(Math.random().toString(36).substr(2, 6).toUpperCase());
-  const webhookUrl = `https://api.protocolsense.dev/validate/${projectIdPlaceholder.current}`;
 
   // Docs state
   const [docsMarkdown, setDocsMarkdown] = useState<string | null>(null);
@@ -265,7 +261,6 @@ export const App: React.FC = () => {
     setShowCodeModal(false);
     setShowCompareModal(false);
     setShowCurlModal(false);
-    setShowCiCdModal(false);
     setShowDemoModal(false);
     setShowValidationModal(false);
     setShowDiagnosisModal(false);
@@ -543,13 +538,6 @@ export const App: React.FC = () => {
           <h1 className="text-xl lg:text-2xl font-medium text-on-surface tracking-tight group-hover:text-primary transition-colors">ProtocolSense</h1>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 w-full lg:w-auto">
-          <WithTooltip text="Set up automated validation webhooks">
-            <button onClick={() => setShowCiCdModal(true)} className="group cursor-pointer flex items-center gap-2 text-base font-bold text-on-surface/60 px-2 lg:px-3 py-2 hover:text-primary transition-all rounded-full hover:bg-surface-variant/30">
-              <span className="material-symbols-outlined text-2xl">integration_instructions</span>
-              <span className="hidden lg:block max-w-0 overflow-hidden lg:group-hover:max-w-xs transition-all duration-500 ease-in-out">CI/CD</span>
-            </button>
-          </WithTooltip>
-          
           <WithTooltip text="Compare behavior between two system versions">
             <button onClick={() => setShowCompareModal(true)} className="group cursor-pointer flex items-center gap-2 text-base font-bold text-on-surface/60 px-2 lg:px-3 py-2 hover:text-primary transition-all rounded-full hover:bg-surface-variant/30">
               <span className="material-symbols-outlined text-2xl">difference</span>
@@ -602,12 +590,14 @@ export const App: React.FC = () => {
                 </div>
               )}
               <span className="hidden lg:block text-sm font-medium text-on-surface/70 max-w-[120px] truncate">{user.user_metadata?.full_name || user.email}</span>
-              <button
-                onClick={() => supabase.auth.signOut()}
-                className="text-sm font-bold text-on-surface-variant hover:text-error transition-colors px-2 py-1 rounded-full hover:bg-error/10"
-              >
-                <span className="material-symbols-outlined text-xl">logout</span>
-              </button>
+              <WithTooltip text="Sign out">
+                <button
+                  onClick={() => supabase.auth.signOut()}
+                  className="text-sm font-bold text-on-surface-variant hover:text-error transition-colors px-2 py-1 rounded-full hover:bg-error/10"
+                >
+                  <span className="material-symbols-outlined text-xl">logout</span>
+                </button>
+              </WithTooltip>
             </div>
           ) : (
             <button
@@ -719,7 +709,7 @@ export const App: React.FC = () => {
                  id="tour-discover"
                  onClick={handleAnalyze}
                  disabled={status === AnalysisStatus.LOADING}
-                 className="w-full bg-primary text-background py-3 lg:py-4 rounded-full font-bold text-base lg:text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                 className="w-full bg-gradient-to-r from-primary to-aiPurple text-background py-3 lg:py-4 rounded-full font-bold text-base lg:text-lg shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                >
                  {status === AnalysisStatus.LOADING ? (
                     <>
@@ -738,33 +728,36 @@ export const App: React.FC = () => {
         </aside>
 
         <section className="flex-1 overflow-x-hidden bg-surface-container/30 px-4 lg:px-10 py-6 lg:py-10 space-y-8 lg:rounded-tl-[48px] relative lg:overflow-y-auto custom-scrollbar">
-          {(status === AnalysisStatus.IDLE || status === AnalysisStatus.ERROR) && (
+          {status === AnalysisStatus.IDLE && !examples.some(e => e.input.trim() || e.output.trim()) && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 py-10 lg:py-0">
                <div className="space-y-6">
-                 {status === AnalysisStatus.ERROR ? (
-                   <>
-                     <span className="material-symbols-outlined text-6xl lg:text-8xl text-error opacity-40 mb-4">error</span>
-                     <h2 className="text-3xl lg:text-4xl font-medium tracking-tight text-error">Analysis Interrupted</h2>
-                     <p className="text-lg lg:text-xl text-on-surface-variant font-light max-w-xl mx-auto">{error}</p>
-                   </>
-                 ) : (
-                   <>
-                     <h2 className="text-display">Reverse-engineer complex systems.</h2>
-                     <p className="text-lg lg:text-2xl text-on-surface-variant font-light max-w-2xl mx-auto">
-                       Designed for undocumented APIs, legacy systems, and brittle third-party integrations.
-                     </p>
-                   </>
-                 )}
+                 <h2 className="text-display">Reverse-engineer complex systems.</h2>
+                 <p className="text-lg lg:text-2xl text-on-surface-variant font-light max-w-2xl mx-auto">
+                   Designed for undocumented APIs, legacy systems, and brittle third-party integrations.
+                 </p>
                </div>
                <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto px-4 sm:px-0">
                  <button onClick={() => setShowDemoModal(true)} className="bg-primary text-background px-5 py-2.5 rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-sm">
-                   {status === AnalysisStatus.ERROR ? 'Try Scenario' : 'Try Demo'}
+                   Try Demo
                  </button>
-                 {status === AnalysisStatus.ERROR && (
-                    <button onClick={handleAnalyze} className="bg-surface-variant text-on-surface px-6 py-3 rounded-full font-bold text-base hover:bg-on-surface hover:text-background transition-all shadow-sm w-full sm:w-auto">
-                      Retry Analysis
-                    </button>
-                 )}
+               </div>
+            </div>
+          )}
+
+          {status === AnalysisStatus.ERROR && (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 py-10 lg:py-0">
+               <div className="space-y-6">
+                 <span className="material-symbols-outlined text-6xl lg:text-8xl text-error opacity-40 mb-4">error</span>
+                 <h2 className="text-3xl lg:text-4xl font-medium tracking-tight text-error">Analysis Interrupted</h2>
+                 <p className="text-lg lg:text-xl text-on-surface-variant font-light max-w-xl mx-auto">{error}</p>
+               </div>
+               <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto px-4 sm:px-0">
+                 <button onClick={() => setShowDemoModal(true)} className="bg-primary text-background px-5 py-2.5 rounded-full font-bold text-sm hover:opacity-90 transition-all shadow-sm">
+                   Try Scenario
+                 </button>
+                 <button onClick={handleAnalyze} className="bg-surface-variant text-on-surface px-6 py-3 rounded-full font-bold text-base hover:bg-on-surface hover:text-background transition-all shadow-sm w-full sm:w-auto">
+                   Retry Analysis
+                 </button>
                </div>
             </div>
           )}
@@ -995,11 +988,6 @@ export const App: React.FC = () => {
         projectName={projectName} 
       />
 
-      <CiCdModal 
-        isOpen={showCiCdModal} 
-        onClose={() => setShowCiCdModal(false)} 
-        webhookUrl={webhookUrl} 
-      />
 
       <CompareModal 
         isOpen={showCompareModal} 
