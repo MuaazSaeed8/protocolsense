@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { ExamplePair, AnalysisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from '../types';
 
 // Retry configuration
@@ -29,9 +29,14 @@ async function callGroq(params: {
   temperature?: number;
 }): Promise<string> {
   console.log('[groq-proxy] calling: https://nfrqbewahjkfjsrewvbq.supabase.co/functions/v1/groq-proxy');
-  // supabase.functions.invoke automatically sends Authorization: Bearer <session_jwt>
-  // (or anon key if not logged in) — do not override it here.
-  const { data, error } = await supabase.functions.invoke('groq-proxy', { body: params });
+  const { data: { session } } = await supabase.auth.getSession();
+  const { data, error } = await supabase.functions.invoke('groq-proxy', {
+    body: params,
+    headers: {
+      'Authorization': `Bearer ${session?.access_token ?? SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
+  });
   if (error) {
     // Surface the actual 401/429 message from the edge function response body
     let message = error.message;
