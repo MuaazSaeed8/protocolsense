@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { ExamplePair, AnalysisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from '../types';
 
 // Retry configuration
@@ -31,6 +31,10 @@ async function callGroq(params: {
   console.log('[groq-proxy] calling: https://nfrqbewahjkfjsrewvbq.supabase.co/functions/v1/groq-proxy');
   const { data, error } = await supabase.functions.invoke('groq-proxy', {
     body: params,
+    headers: {
+      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+      'apikey': SUPABASE_ANON_KEY,
+    },
   });
   if (error) throw new Error(error.message);
   const content: string | undefined = data?.choices?.[0]?.message?.content;
