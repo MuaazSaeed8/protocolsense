@@ -28,6 +28,7 @@ async function callGroq(params: {
   response_format?: { type: string };
   temperature?: number;
 }): Promise<string> {
+  console.log('[groq-proxy] calling: https://nfrqbewahjkfjsrewvbq.supabase.co/functions/v1/groq-proxy');
   const { data, error } = await supabase.functions.invoke('groq-proxy', {
     body: params,
   });
