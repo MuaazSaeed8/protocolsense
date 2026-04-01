@@ -240,7 +240,7 @@ const CsvModal: React.FC<CsvModalProps> = ({ isOpen, onClose, onImport }) => {
             <button 
               onClick={handleImportSelectedCsv} 
               disabled={!csvPreview || selectedCsvIndices.size === 0} 
-              className="px-10 py-4 rounded-full font-bold text-base bg-primary text-background hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-xl"
+              className="px-10 py-4 rounded-full font-bold text-base bg-primary text-background shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed transition-all"
             >
               Import Selected ({selectedCsvIndices.size})
             </button>
