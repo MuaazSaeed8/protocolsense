@@ -338,7 +338,7 @@ export const App: React.FC = () => {
       const assistantMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: response, timestamp: Date.now() };
       setChatMessages(prev => [...prev, assistantMsg]);
     } catch (e) {
-      setToast("AI response failed.");
+      setToast((e as Error).message || "AI response failed.");
     } finally {
       setIsChatLoading(false);
     }
@@ -372,7 +372,7 @@ export const App: React.FC = () => {
       setStatus(AnalysisStatus.SUCCESS);
     } catch (e) {
       console.error(e);
-      setError("The protocol analysis engine encountered an issue. Please check your training set and try again.");
+      setError((e as Error).message || "The protocol analysis engine encountered an issue.");
       setStatus(AnalysisStatus.ERROR);
     }
   };
@@ -406,7 +406,7 @@ export const App: React.FC = () => {
       }
     } catch (e) {
       console.error(e);
-      setError("Failed to decipher system logic. Ensure your examples are sufficiently diverse and formatted correctly.");
+      setError((e as Error).message || "Failed to decipher system logic. Ensure your examples are sufficiently diverse and formatted correctly.");
       setStatus(AnalysisStatus.ERROR);
     }
   };
