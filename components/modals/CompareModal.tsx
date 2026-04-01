@@ -106,8 +106,6 @@ const CompareModal: React.FC<CompareModalProps> = ({ isOpen, onClose, baseExampl
                       isRemovable={examplesA.length > 1}
                       onUpdate={(id, f, v) => setExamplesA(examplesA.map(e => e.id === id ? { ...e, [f]: v } : e))}
                       onRemove={(id) => setExamplesA(examplesA.filter(e => e.id !== id))}
-                      customInputPlaceholder='{ "amount": 100 }'
-                      customOutputPlaceholder='{ "fee": 1.5 }'
                     />
                   ))}
                 </div>
@@ -141,8 +139,6 @@ const CompareModal: React.FC<CompareModalProps> = ({ isOpen, onClose, baseExampl
                       isRemovable={examplesB.length > 1}
                       onUpdate={(id, f, v) => setExamplesB(examplesB.map(e => e.id === id ? { ...e, [f]: v } : e))}
                       onRemove={(id) => setExamplesB(examplesB.filter(e => e.id !== id))}
-                      customInputPlaceholder='{ "amount": 100 }'
-                      customOutputPlaceholder='{ "fee": 2.0 }'
                     />
                   ))}
                 </div>
