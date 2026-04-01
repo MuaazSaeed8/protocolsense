@@ -1,15 +1,17 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import Groq from "groq-sdk";
 import { ExamplePair, AnalysisResult, Rule, TestCase, TestSuite, DiagnosisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from "../types";
 
-let _ai: GoogleGenAI | null = null;
-function getAI(): GoogleGenAI {
-  if (!_ai) {
-    const apiKey = process.env.API_KEY;
-    if (!apiKey) throw new Error('GEMINI_API_KEY is not set. Add it to your Vercel environment variables.');
-    _ai = new GoogleGenAI({ apiKey });
+let _groq: Groq | null = null;
+function getGroq(): Groq {
+  if (!_groq) {
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
+    if (!apiKey) throw new Error('VITE_GROQ_API_KEY is not set. Add it to your Vercel environment variables.');
+    _groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
   }
-  return _ai;
+  return _groq;
 }
+
+const MODEL = "llama-3.3-70b-versatile";
 
 // Retry configuration
 const RETRY_ATTEMPTS = 3;
@@ -31,153 +33,55 @@ async function withRetry<T>(operation: () => Promise<T>, retries = RETRY_ATTEMPT
   throw lastError;
 }
 
-const ANALYSIS_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    system_summary: {
-      type: Type.STRING,
-      description: "A brief description of what this system appears to do based on the examples provided.",
-    },
-    rules: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING, description: "A unique identifier for the rule (e.g. rule_1)." },
-          description: { type: Type.STRING, description: "A clear and precise restatement of the inferred rule." },
-          confidence: { type: Type.NUMBER, description: "Confidence level between 0 and 100." },
-          evidence: { type: Type.STRING, description: "Direct evidence observed in the data." },
-          supporting_examples: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Indices or identifiers of examples that support this rule."
-          },
-        },
-        required: ["id", "description", "confidence", "evidence", "supporting_examples"],
-      },
-    },
-    edge_cases: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "Potential edge cases to test for further validation.",
-    },
-    ambiguities: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "Elements that remain unclear or require more examples to confirm.",
-    },
-  },
-  required: ["system_summary", "rules", "edge_cases", "ambiguities"],
-};
-
-const COMPARISON_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    summary: { type: Type.STRING },
-    added_rules: { type: Type.ARRAY, items: { type: Type.STRING } },
-    removed_rules: { type: Type.ARRAY, items: { type: Type.STRING } },
-    modified_rules: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING },
-          change_reason: { type: Type.STRING }
-        },
-        required: ["id", "change_reason"]
-      }
-    },
-    backward_compatibility_impact: { type: Type.STRING, description: "LOW | MEDIUM | HIGH" },
-    concrete_break_example: { type: Type.STRING },
-    diffs: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING },
-          type: { type: Type.STRING, description: "NEW, CHANGED, REMOVED, or UNCHANGED" },
-          description: { type: Type.STRING },
-          oldDescription: { type: Type.STRING },
-          confidence: { type: Type.NUMBER },
-          oldConfidence: { type: Type.NUMBER },
-          breakingImpact: { type: Type.STRING }
-        },
-        required: ["id", "type", "description", "confidence"]
-      }
-    }
-  },
-  required: ["summary", "added_rules", "removed_rules", "modified_rules", "backward_compatibility_impact", "concrete_break_example", "diffs"]
-};
-
-const VALIDATION_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    status: {
-      type: Type.STRING,
-      description: "One of: VALID, INVALID, UNDEFINED",
-    },
-    violated_rules: {
-      type: Type.ARRAY,
-      items: { type: Type.STRING },
-      description: "List of IDs of rules that were violated. Empty if VALID or UNDEFINED.",
-    },
-    explanation: {
-      type: Type.STRING,
-      description: "Clear technical explanation in plain language.",
-    },
-    suggested_fix: {
-      type: Type.STRING,
-      description: "Optional correction if rules clearly imply one.",
-    }
-  },
-  required: ["status", "violated_rules", "explanation"]
-};
-
-const SINGLE_EXTRACTION_SCHEMA = {
-  type: Type.OBJECT,
-  properties: {
-    input: { type: Type.STRING, description: "Extracted input payload as a valid JSON string" },
-    output: { type: Type.STRING, description: "Extracted output response as a valid JSON string" }
-  },
-  required: ["input", "output"]
-};
+function getText(response: Groq.Chat.ChatCompletion): string {
+  return response.choices[0]?.message?.content ?? "";
+}
 
 export async function analyzeProtocol(examples: ExamplePair[]): Promise<AnalysisResult> {
   const exampleString = examples
     .map((e, i) => `Example ${i + 1}:\nInput: ${e.input}\nOutput: ${e.output}`)
     .join("\n\n");
 
-  const prompt = `Analyze the following input/output pairs from an unknown system. 
+  const prompt = `Analyze the following input/output pairs from an unknown system.
   Your goal is to infer the implicit rules, logic, and constraints of the system.
-  
+
   For each rule identified:
   - Restate the rule clearly and precisely.
   - Reference supporting example indices (e.g., "Example 1", "Example 2").
   - Do not inflate confidence or speculate.
-  
+
   EXAMPLES:
   ${exampleString}
-  
-  Strictly follow the JSON output format provided in the schema.`;
+
+  Return a JSON object with this exact structure:
+  {
+    "system_summary": "string describing what the system does",
+    "rules": [
+      {
+        "id": "rule_1",
+        "description": "clear rule description",
+        "confidence": 85,
+        "evidence": "direct evidence from data",
+        "supporting_examples": ["Example 1", "Example 2"]
+      }
+    ],
+    "edge_cases": ["edge case description"],
+    "ambiguities": ["ambiguity description"]
+  }`;
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: ANALYSIS_SCHEMA,
-          temperature: 0.1,
-        },
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
       });
     });
 
-    if (!response.text) {
-      throw new Error("No response from AI");
-    }
-
-    return JSON.parse(response.text.trim());
+    const text = getText(response);
+    if (!text) throw new Error("No response from AI");
+    return JSON.parse(text);
   } catch (error) {
     console.error("Error analyzing protocol:", error);
     throw error;
@@ -202,26 +106,40 @@ Your task:
 4. Assess backward compatibility impact: LOW | MEDIUM | HIGH.
 5. Provide a concrete break example: One realistic example of how an existing integration relying on Version A could fail when encountering Version B behavior.
 
-Return the analysis in JSON format following the provided schema.`;
+Return a JSON object with this exact structure:
+{
+  "summary": "string",
+  "added_rules": ["rule description"],
+  "removed_rules": ["rule description"],
+  "modified_rules": [{ "id": "rule_1", "change_reason": "why it changed" }],
+  "backward_compatibility_impact": "LOW | MEDIUM | HIGH",
+  "concrete_break_example": "string",
+  "diffs": [
+    {
+      "id": "rule_1",
+      "type": "NEW | CHANGED | REMOVED | UNCHANGED",
+      "description": "string",
+      "oldDescription": "string",
+      "confidence": 90,
+      "oldConfidence": 80,
+      "breakingImpact": "string"
+    }
+  ]
+}`;
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: COMPARISON_SCHEMA,
-          temperature: 0.1,
-        },
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
       });
     });
 
-    if (!response.text) {
-      throw new Error("No response from AI");
-    }
-
-    return JSON.parse(response.text.trim());
+    const text = getText(response);
+    if (!text) throw new Error("No response from AI");
+    return JSON.parse(text);
   } catch (error) {
     console.error("Error comparing protocols:", error);
     throw error;
@@ -229,11 +147,11 @@ Return the analysis in JSON format following the provided schema.`;
 }
 
 export async function validateProtocolInput(
-  input: string, 
+  input: string,
   result: AnalysisResult
 ): Promise<Partial<ValidationAttempt>> {
   const rulesString = result.rules.map(r => `- [${r.id}] ${r.description} (Confidence: ${r.confidence}%)`).join('\n');
-  
+
   const prompt = `You are validating a new input against an already learned protocol specification.
 
 Context provided:
@@ -252,26 +170,27 @@ Your task:
 5. Do not soften failures.
 6. Provide a clear technical explanation and an optional suggested fix.
 
-Return the result in JSON matching the specified schema.`;
+Return a JSON object with this exact structure:
+{
+  "status": "VALID | INVALID | UNDEFINED",
+  "violated_rules": ["rule_id"],
+  "explanation": "clear technical explanation",
+  "suggested_fix": "optional correction"
+}`;
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: VALIDATION_SCHEMA,
-          temperature: 0.1,
-        },
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
       });
     });
 
-    if (!response.text) {
-      throw new Error("No validation response from AI");
-    }
-
-    return JSON.parse(response.text.trim());
+    const text = getText(response);
+    if (!text) throw new Error("No validation response from AI");
+    return JSON.parse(text);
   } catch (error) {
     console.error("Error validating input:", error);
     throw error;
@@ -280,37 +199,38 @@ Return the result in JSON matching the specified schema.`;
 
 export async function extractDataFromText(text: string): Promise<ExtractedExample> {
   const prompt = `Extract the input and output from this natural language description. Return valid JSON objects.
-  For example, 'order 3 books as a member' should become input: { "item": "book", "quantity": 3, "member": true }. 
-  'total is 48' should become output: { "total": 48 }. 
+  For example, 'order 3 books as a member' should become input: { "item": "book", "quantity": 3, "member": true }.
+  'total is 48' should become output: { "total": 48 }.
   Always return structured JSON, not plain text strings.
-  
-  Description: "${text}"`;
+
+  Description: "${text}"
+
+  Return a JSON object with this exact structure:
+  {
+    "input": "JSON string of the input payload",
+    "output": "JSON string of the output payload"
+  }`;
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: SINGLE_EXTRACTION_SCHEMA,
-          temperature: 0.1,
-        }
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
       });
     });
 
-    if (!response.text) {
-      throw new Error("Failed to extract data");
-    }
+    const responseText = getText(response);
+    if (!responseText) throw new Error("Failed to extract data");
 
-    const raw = JSON.parse(response.text.trim());
+    const raw = JSON.parse(responseText);
 
     const formatJson = (val: string) => {
       try {
         const parsed = JSON.parse(val);
         return JSON.stringify(parsed, null, 2);
       } catch (e) {
-        // If it's not valid JSON, return as is (fallback to plain text)
         return val;
       }
     };
@@ -325,22 +245,25 @@ export async function extractDataFromText(text: string): Promise<ExtractedExampl
 }
 
 export async function extractDataFromCurl(curl: string, responseText: string): Promise<ExtractedExample> {
-  const prompt = `Extract input/output from cURL: ${curl} and Response: ${responseText}`;
+  const prompt = `Extract input/output from cURL: ${curl} and Response: ${responseText}
+
+  Return a JSON object with this exact structure:
+  {
+    "input": "JSON string of the request payload",
+    "output": "JSON string of the response payload"
+  }`;
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: SINGLE_EXTRACTION_SCHEMA,
-          temperature: 0.1,
-        }
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.1,
       });
     });
 
-    return JSON.parse(response.text.trim());
+    return JSON.parse(getText(response));
   } catch (error) {
     throw error;
   }
@@ -381,13 +304,13 @@ Format your response exactly like this:
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: prompt,
-        config: { temperature: 0.2 }
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
       });
     });
-    return response.text || "Could not diagnose the failure.";
+    return getText(response) || "Could not diagnose the failure.";
   } catch (error) {
     throw error;
   }
@@ -409,27 +332,26 @@ export async function generateImplementationCode(
   }
 
   const prompt = `Generate implementation in ${language} for the following inferred system protocol.
-  
+
   System Summary: ${result.system_summary}
-  
+
   Rules:
   ${result.rules.map(r => `- ${r.description} (Confidence: ${r.confidence}%)`).join('\n')}
-  
+
   Task: ${specificInstruction}
-  
+
   IMPORTANT: Return ONLY the raw code/yaml. Do not wrap in markdown code blocks. Do not include conversational text.`;
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { temperature: 0.2 },
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
       });
     });
-    
-    // Cleanup any accidental markdown wrapping
-    let code = response.text || "";
+
+    let code = getText(response);
     if (code.startsWith('```')) {
       code = code.replace(/^```[a-z]*\n/i, '').replace(/\n```$/, '');
     }
@@ -447,13 +369,13 @@ export async function generateDocumentation(
 
   try {
     const response = await withRetry(async () => {
-      return await getAI().models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: { temperature: 0.2 },
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.2,
       });
     });
-    return response.text || "";
+    return getText(response);
   } catch (error) {
     throw error;
   }
@@ -466,20 +388,24 @@ export async function askAiAboutProtocol(
 ): Promise<string> {
   const systemInstruction = `You are a ProtocolSense Expert. System: ${result.system_summary}`;
 
-  try {
-    const chat = getAI().chats.create({
-      model: 'gemini-3-flash-preview',
-      config: { systemInstruction, temperature: 0.7 },
-      history: chatHistory.map(h => ({
-        role: h.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: h.content }]
-      }))
-    });
+  const messages: Groq.Chat.ChatCompletionMessageParam[] = [
+    { role: "system", content: systemInstruction },
+    ...chatHistory.map(h => ({
+      role: (h.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+      content: h.content,
+    })),
+    { role: "user", content: question },
+  ];
 
+  try {
     const response = await withRetry(async () => {
-      return await chat.sendMessage({ message: question });
+      return await getGroq().chat.completions.create({
+        model: MODEL,
+        messages,
+        temperature: 0.7,
+      });
     });
-    return response.text || "I'm sorry, I couldn't process that.";
+    return getText(response) || "I'm sorry, I couldn't process that.";
   } catch (error) {
     throw error;
   }
