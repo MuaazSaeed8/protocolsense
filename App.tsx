@@ -16,7 +16,6 @@ import DemoModal from './components/modals/DemoModal';
 import CurlModal from './components/modals/CurlModal';
 import CsvModal from './components/modals/CsvModal';
 import ExportModal from './components/modals/ExportModal';
-import CiCdModal from './components/modals/CiCdModal';
 import CompareModal from './components/modals/CompareModal';
 import ValidationModal from './components/modals/ValidationModal';
 import DiagnosisModal from './components/modals/DiagnosisModal';
@@ -94,7 +93,6 @@ export const App: React.FC = () => {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showCurlModal, setShowCurlModal] = useState(false);
   const [showCsvModal, setShowCsvModal] = useState(false);
-  const [showCiCdModal, setShowCiCdModal] = useState(false);
   const [showCodeModal, setShowCodeModal] = useState(false);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showDocsModal, setShowDocsModal] = useState(false);
@@ -113,8 +111,6 @@ export const App: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
-  const projectIdPlaceholder = useRef(Math.random().toString(36).substr(2, 6).toUpperCase());
-  const webhookUrl = `https://api.protocolsense.dev/validate/${projectIdPlaceholder.current}`;
 
   // Docs state
   const [docsMarkdown, setDocsMarkdown] = useState<string | null>(null);
@@ -265,7 +261,6 @@ export const App: React.FC = () => {
     setShowCodeModal(false);
     setShowCompareModal(false);
     setShowCurlModal(false);
-    setShowCiCdModal(false);
     setShowDemoModal(false);
     setShowValidationModal(false);
     setShowDiagnosisModal(false);
@@ -543,13 +538,6 @@ export const App: React.FC = () => {
           <h1 className="text-xl lg:text-2xl font-medium text-on-surface tracking-tight group-hover:text-primary transition-colors">ProtocolSense</h1>
         </div>
         <div className="flex flex-wrap items-center justify-center gap-2 lg:gap-4 w-full lg:w-auto">
-          <WithTooltip text="Set up automated validation webhooks">
-            <button onClick={() => setShowCiCdModal(true)} className="group cursor-pointer flex items-center gap-2 text-base font-bold text-on-surface/60 px-2 lg:px-3 py-2 hover:text-primary transition-all rounded-full hover:bg-surface-variant/30">
-              <span className="material-symbols-outlined text-2xl">integration_instructions</span>
-              <span className="hidden lg:block max-w-0 overflow-hidden lg:group-hover:max-w-xs transition-all duration-500 ease-in-out">CI/CD</span>
-            </button>
-          </WithTooltip>
-          
           <WithTooltip text="Compare behavior between two system versions">
             <button onClick={() => setShowCompareModal(true)} className="group cursor-pointer flex items-center gap-2 text-base font-bold text-on-surface/60 px-2 lg:px-3 py-2 hover:text-primary transition-all rounded-full hover:bg-surface-variant/30">
               <span className="material-symbols-outlined text-2xl">difference</span>
@@ -995,11 +983,6 @@ export const App: React.FC = () => {
         projectName={projectName} 
       />
 
-      <CiCdModal 
-        isOpen={showCiCdModal} 
-        onClose={() => setShowCiCdModal(false)} 
-        webhookUrl={webhookUrl} 
-      />
 
       <CompareModal 
         isOpen={showCompareModal} 
