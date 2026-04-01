@@ -74,7 +74,7 @@ const CurlModal: React.FC<CurlModalProps> = ({ isOpen, onClose, onImport }) => {
             <button onClick={onClose} className="flex-1 py-4 rounded-full font-bold text-base bg-surface-variant text-on-surface hover:bg-surface-variant/80 transition-all">
               Cancel
             </button>
-            <button onClick={handleImportCurl} disabled={!curlCommand.trim() || isImportingCurl} className="flex-1 py-4 rounded-full font-bold text-base bg-primary text-background hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 shadow-xl">
+            <button onClick={handleImportCurl} disabled={!curlCommand.trim() || isImportingCurl} className="flex-1 py-4 rounded-full font-bold text-base bg-primary text-background shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:scale-100 disabled:cursor-not-allowed transition-all">
               {isImportingCurl ? 'Parsing...' : 'Import'}
             </button>
           </div>
