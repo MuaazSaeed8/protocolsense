@@ -1,17 +1,5 @@
-import Groq from "groq-sdk";
-import { ExamplePair, AnalysisResult, Rule, TestCase, TestSuite, DiagnosisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from "../types";
-
-let _groq: Groq | null = null;
-function getGroq(): Groq {
-  if (!_groq) {
-    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
-    if (!apiKey) throw new Error('VITE_GROQ_API_KEY is not set. Add it to your Vercel environment variables.');
-    _groq = new Groq({ apiKey, dangerouslyAllowBrowser: true });
-  }
-  return _groq;
-}
-
-const MODEL = "llama-3.3-70b-versatile";
+import { supabase } from '../lib/supabase';
+import { ExamplePair, AnalysisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from '../types';
 
 // Retry configuration
 const RETRY_ATTEMPTS = 3;
@@ -33,14 +21,26 @@ async function withRetry<T>(operation: () => Promise<T>, retries = RETRY_ATTEMPT
   throw lastError;
 }
 
-function getText(response: Groq.Chat.ChatCompletion): string {
-  return response.choices[0]?.message?.content ?? "";
+type Message = { role: 'system' | 'user' | 'assistant'; content: string };
+
+async function callGroq(params: {
+  messages: Message[];
+  response_format?: { type: string };
+  temperature?: number;
+}): Promise<string> {
+  const { data, error } = await supabase.functions.invoke('groq-proxy', {
+    body: params,
+  });
+  if (error) throw new Error(error.message);
+  const content: string | undefined = data?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('No response from AI');
+  return content;
 }
 
 export async function analyzeProtocol(examples: ExamplePair[]): Promise<AnalysisResult> {
   const exampleString = examples
     .map((e, i) => `Example ${i + 1}:\nInput: ${e.input}\nOutput: ${e.output}`)
-    .join("\n\n");
+    .join('\n\n');
 
   const prompt = `Analyze the following input/output pairs from an unknown system.
   Your goal is to infer the implicit rules, logic, and constraints of the system.
@@ -70,20 +70,14 @@ export async function analyzeProtocol(examples: ExamplePair[]): Promise<Analysis
   }`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-      });
-    });
-
-    const text = getText(response);
-    if (!text) throw new Error("No response from AI");
+    const text = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    }));
     return JSON.parse(text);
   } catch (error) {
-    console.error("Error analyzing protocol:", error);
+    console.error('Error analyzing protocol:', error);
     throw error;
   }
 }
@@ -128,27 +122,21 @@ Return a JSON object with this exact structure:
 }`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-      });
-    });
-
-    const text = getText(response);
-    if (!text) throw new Error("No response from AI");
+    const text = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    }));
     return JSON.parse(text);
   } catch (error) {
-    console.error("Error comparing protocols:", error);
+    console.error('Error comparing protocols:', error);
     throw error;
   }
 }
 
 export async function validateProtocolInput(
   input: string,
-  result: AnalysisResult
+  result: AnalysisResult,
 ): Promise<Partial<ValidationAttempt>> {
   const rulesString = result.rules.map(r => `- [${r.id}] ${r.description} (Confidence: ${r.confidence}%)`).join('\n');
 
@@ -179,20 +167,14 @@ Return a JSON object with this exact structure:
 }`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-      });
-    });
-
-    const text = getText(response);
-    if (!text) throw new Error("No validation response from AI");
+    const text = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    }));
     return JSON.parse(text);
   } catch (error) {
-    console.error("Error validating input:", error);
+    console.error('Error validating input:', error);
     throw error;
   }
 }
@@ -212,33 +194,23 @@ export async function extractDataFromText(text: string): Promise<ExtractedExampl
   }`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-      });
-    });
-
-    const responseText = getText(response);
-    if (!responseText) throw new Error("Failed to extract data");
+    const responseText = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    }));
 
     const raw = JSON.parse(responseText);
 
     const formatJson = (val: string) => {
       try {
-        const parsed = JSON.parse(val);
-        return JSON.stringify(parsed, null, 2);
-      } catch (e) {
+        return JSON.stringify(JSON.parse(val), null, 2);
+      } catch {
         return val;
       }
     };
 
-    return {
-      input: formatJson(raw.input),
-      output: formatJson(raw.output)
-    };
+    return { input: formatJson(raw.input), output: formatJson(raw.output) };
   } catch (error) {
     throw error;
   }
@@ -254,16 +226,12 @@ export async function extractDataFromCurl(curl: string, responseText: string): P
   }`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        response_format: { type: "json_object" },
-        temperature: 0.1,
-      });
-    });
-
-    return JSON.parse(getText(response));
+    const text = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    }));
+    return JSON.parse(text);
   } catch (error) {
     throw error;
   }
@@ -272,7 +240,7 @@ export async function extractDataFromCurl(curl: string, responseText: string): P
 export async function diagnoseFailure(
   request: string,
   errorResponse: string,
-  result: AnalysisResult
+  result: AnalysisResult,
 ): Promise<string> {
   const rulesString = result.rules.map(r => `- [${r.id}] ${r.description}`).join('\n');
   const prompt = `You are a ProtocolSense system debugger.
@@ -303,14 +271,11 @@ Format your response exactly like this:
 `;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,
-      });
-    });
-    return getText(response) || "Could not diagnose the failure.";
+    const text = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+    }));
+    return text || 'Could not diagnose the failure.';
   } catch (error) {
     throw error;
   }
@@ -318,18 +283,14 @@ Format your response exactly like this:
 
 export async function generateImplementationCode(
   result: AnalysisResult,
-  language: 'typescript' | 'python' | 'zod' | 'openapi'
+  language: 'typescript' | 'python' | 'zod' | 'openapi',
 ): Promise<string> {
-  let specificInstruction = "";
-  if (language === 'typescript') {
-    specificInstruction = "Generate a TypeScript interface and a validation function that checks input against these rules. Use distinct types where appropriate.";
-  } else if (language === 'python') {
-    specificInstruction = "Generate a Pydantic model and a validator function. Ensure field constraints match the rules.";
-  } else if (language === 'zod') {
-    specificInstruction = "Generate a Zod schema that enforces these rules strictly.";
-  } else if (language === 'openapi') {
-    specificInstruction = "Generate a valid OpenAPI 3.0 YAML specification for an endpoint that accepts this input and returns the inferred output format.";
-  }
+  const instructions: Record<string, string> = {
+    typescript: 'Generate a TypeScript interface and a validation function that checks input against these rules. Use distinct types where appropriate.',
+    python: 'Generate a Pydantic model and a validator function. Ensure field constraints match the rules.',
+    zod: 'Generate a Zod schema that enforces these rules strictly.',
+    openapi: 'Generate a valid OpenAPI 3.0 YAML specification for an endpoint that accepts this input and returns the inferred output format.',
+  };
 
   const prompt = `Generate implementation in ${language} for the following inferred system protocol.
 
@@ -338,20 +299,15 @@ export async function generateImplementationCode(
   Rules:
   ${result.rules.map(r => `- ${r.description} (Confidence: ${r.confidence}%)`).join('\n')}
 
-  Task: ${specificInstruction}
+  Task: ${instructions[language]}
 
   IMPORTANT: Return ONLY the raw code/yaml. Do not wrap in markdown code blocks. Do not include conversational text.`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,
-      });
-    });
-
-    let code = getText(response);
+    let code = await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+    }));
     if (code.startsWith('```')) {
       code = code.replace(/^```[a-z]*\n/i, '').replace(/\n```$/, '');
     }
@@ -363,19 +319,15 @@ export async function generateImplementationCode(
 
 export async function generateDocumentation(
   result: AnalysisResult,
-  examples: ExamplePair[]
+  examples: ExamplePair[],
 ): Promise<string> {
   const prompt = `Generate Markdown docs for: ${result.system_summary}`;
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages: [{ role: "user", content: prompt }],
-        temperature: 0.2,
-      });
-    });
-    return getText(response);
+    return await withRetry(() => callGroq({
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.2,
+    }));
   } catch (error) {
     throw error;
   }
@@ -384,28 +336,20 @@ export async function generateDocumentation(
 export async function askAiAboutProtocol(
   question: string,
   result: AnalysisResult,
-  chatHistory: { role: string; content: string }[]
+  chatHistory: { role: string; content: string }[],
 ): Promise<string> {
-  const systemInstruction = `You are a ProtocolSense Expert. System: ${result.system_summary}`;
-
-  const messages: Groq.Chat.ChatCompletionMessageParam[] = [
-    { role: "system", content: systemInstruction },
+  const messages: Message[] = [
+    { role: 'system', content: `You are a ProtocolSense Expert. System: ${result.system_summary}` },
     ...chatHistory.map(h => ({
       role: (h.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
       content: h.content,
     })),
-    { role: "user", content: question },
+    { role: 'user', content: question },
   ];
 
   try {
-    const response = await withRetry(async () => {
-      return await getGroq().chat.completions.create({
-        model: MODEL,
-        messages,
-        temperature: 0.7,
-      });
-    });
-    return getText(response) || "I'm sorry, I couldn't process that.";
+    const text = await withRetry(() => callGroq({ messages, temperature: 0.7 }));
+    return text || "I'm sorry, I couldn't process that.";
   } catch (error) {
     throw error;
   }
