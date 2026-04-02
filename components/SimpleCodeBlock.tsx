@@ -19,9 +19,9 @@ const SimpleCodeBlock: React.FC<{ code: string; lang: string }> = ({ code, lang 
   };
 
   return (
-    <pre 
-      className="p-4 lg:p-8 text-sm lg:text-base font-mono leading-relaxed h-full overflow-y-auto custom-scrollbar bg-[#0d0e10]"
-      dangerouslySetInnerHTML={{ __html: highlight(code) }} 
+    <pre
+      className="p-4 lg:p-8 text-sm lg:text-base font-mono leading-relaxed h-full overflow-y-auto custom-scrollbar bg-[#0d0e10] whitespace-pre-wrap break-words"
+      dangerouslySetInnerHTML={{ __html: highlight(code) }}
     />
   );
 };

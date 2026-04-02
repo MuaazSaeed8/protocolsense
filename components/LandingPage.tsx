@@ -245,6 +245,35 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
         </div>
       </div>
 
+      {/* ── Export to your stack ────────────────────────────────────────── */}
+      <div className="max-w-3xl w-full mt-28 px-6 space-y-10">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl lg:text-3xl font-medium tracking-tight">Export to your stack</h2>
+          <p className="text-sm text-on-surface-variant/60">Turn discovered rules into production-ready code in one click.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { lang: 'TypeScript', icon: 'code', color: 'text-aiBlue', bg: 'bg-aiBlue/10', badge: '.ts', desc: 'Typed interfaces and validator functions for immediate use in your codebase.' },
+            { lang: 'Python', icon: 'terminal', color: 'text-aiTeal', bg: 'bg-aiTeal/10', badge: '.py', desc: 'Dataclasses and validation logic compatible with FastAPI, Pydantic, and more.' },
+            { lang: 'Zod', icon: 'verified', color: 'text-aiPurple', bg: 'bg-aiPurple/10', badge: '.ts', desc: 'Runtime schema validation for TypeScript — drop straight into tRPC or Next.js.' },
+            { lang: 'OpenAPI', icon: 'description', color: 'text-primary', bg: 'bg-primary/10', badge: '.yaml', desc: 'Full OpenAPI 3.0 spec ready to import into Swagger, Postman, or API gateways.' },
+          ].map(f => (
+            <div key={f.lang} className="bg-surface-container rounded-md3-item p-5 flex items-start gap-4 border border-surface-variant/10">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${f.bg}`}>
+                <span className={`material-symbols-outlined text-xl ${f.color}`}>{f.icon}</span>
+              </div>
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-base">{f.lang}</p>
+                  <span className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded ${f.bg} ${f.color}`}>{f.badge}</span>
+                </div>
+                <p className="text-sm text-on-surface-variant leading-relaxed">{f.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* ── Footer note ─────────────────────────────────────────────────── */}
       <p className="mt-24 mb-10 px-6 text-xs text-on-surface-variant/40">No credit card required &middot; Sign in to save and load your protocols</p>
 
