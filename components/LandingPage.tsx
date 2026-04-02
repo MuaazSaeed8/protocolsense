@@ -95,7 +95,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
     <div className="flex-1 flex flex-col items-center px-6 min-h-0 overflow-y-auto custom-scrollbar relative">
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <div className="relative w-full flex flex-col items-center py-24 lg:py-36 overflow-hidden">
+      <div className="relative w-full flex flex-col items-center justify-center min-h-screen pt-16 pb-24 overflow-hidden">
         {/* Video background */}
         <video
           className="absolute inset-0 w-full h-full object-cover z-0"
@@ -105,6 +105,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
           muted
           playsInline
         />
+        {/* Bottom fade into page background */}
+        <div className="absolute bottom-0 left-0 right-0 h-48 z-[1] pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, #0e0e0f)' }} />
 
         <div className="max-w-2xl w-full text-center space-y-6 relative z-10">
           <p className="text-sm font-bold uppercase tracking-widest text-on-surface-variant/60">AI-powered protocol discovery</p>
