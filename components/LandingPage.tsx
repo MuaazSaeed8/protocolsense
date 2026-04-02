@@ -98,7 +98,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
       <div className="relative w-full flex flex-col items-center py-24 lg:py-36 overflow-hidden">
         {/* Video background */}
         <video
-          className="absolute inset-0 w-full h-full object-cover -z-10"
+          className="absolute inset-0 w-full h-full object-cover z-0"
           src="/hero.mp4"
           autoPlay
           loop
