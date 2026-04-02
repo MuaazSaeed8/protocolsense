@@ -2,8 +2,8 @@ import { supabase, SUPABASE_ANON_KEY } from '../lib/supabase';
 import { ExamplePair, AnalysisResult, ExtractedExample, ComparisonResult, ValidationAttempt } from '../types';
 
 // Retry configuration
-const RETRY_ATTEMPTS = 3;
-const RETRY_DELAY_MS = 2000;
+const RETRY_ATTEMPTS = 2;
+const RETRY_DELAY_MS = 1000;
 
 async function withRetry<T>(operation: () => Promise<T>, retries = RETRY_ATTEMPTS, delayMs = RETRY_DELAY_MS): Promise<T> {
   let lastError: any;

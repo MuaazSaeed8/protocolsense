@@ -100,7 +100,7 @@ export const App: React.FC = () => {
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
-  const [inputMode, setInputMode] = useState<'json' | 'nl'>('json');
+  const [inputMode, setInputMode] = useState<'json' | 'nl'>('nl');
   const [nlInputText, setNlInputText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedPreview, setExtractedPreview] = useState<ExtractedExample | null>(null);
@@ -338,7 +338,7 @@ export const App: React.FC = () => {
       const assistantMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: response, timestamp: Date.now() };
       setChatMessages(prev => [...prev, assistantMsg]);
     } catch (e) {
-      setToast("AI response failed.");
+      setToast((e as Error).message || "AI response failed.");
     } finally {
       setIsChatLoading(false);
     }
@@ -372,7 +372,7 @@ export const App: React.FC = () => {
       setStatus(AnalysisStatus.SUCCESS);
     } catch (e) {
       console.error(e);
-      setError("The protocol analysis engine encountered an issue. Please check your training set and try again.");
+      setError((e as Error).message || "The protocol analysis engine encountered an issue.");
       setStatus(AnalysisStatus.ERROR);
     }
   };
@@ -406,7 +406,7 @@ export const App: React.FC = () => {
       }
     } catch (e) {
       console.error(e);
-      setError("Failed to decipher system logic. Ensure your examples are sufficiently diverse and formatted correctly.");
+      setError((e as Error).message || "Failed to decipher system logic. Ensure your examples are sufficiently diverse and formatted correctly.");
       setStatus(AnalysisStatus.ERROR);
     }
   };
@@ -638,12 +638,13 @@ export const App: React.FC = () => {
               <div className="col-span-3">
                 {!extractedPreview ? (
                   <div className="bg-surface-container rounded-md3-item p-4 space-y-3 border border-transparent focus-within:border-primary/20 transition-all">
-                     <textarea 
-                       value={nlInputText} 
-                       onChange={e => setNlInputText(e.target.value)} 
-                       placeholder='e.g. A wire transfer of 5000 USD charges 0.5% fee...' 
-                       className="w-full bg-background/40 border border-transparent rounded-xl p-3 text-base focus:bg-background focus:outline-none min-h-[100px] resize-none placeholder:text-on-surface-variant/30" 
+                     <textarea
+                       value={nlInputText}
+                       onChange={e => setNlInputText(e.target.value)}
+                       placeholder='e.g. When I send a payment request for $5000, the system returns a fee of $25 and marks the transfer as approved...'
+                       className="w-full bg-background/40 border border-transparent rounded-xl p-3 text-base focus:bg-background focus:outline-none min-h-[160px] resize-none placeholder:text-on-surface-variant/30"
                      />
+                     <p className="text-xs text-on-surface-variant/50 px-1">Describe what you send and what the system returns — in plain English</p>
                      <button 
                        onClick={handleSmartExtract} 
                        disabled={isExtracting || !nlInputText.trim()} 
@@ -657,7 +658,7 @@ export const App: React.FC = () => {
                        ) : (
                          <>
                            <span className="material-symbols-outlined text-lg">auto_awesome</span>
-                           <span>Extract JSON Pair</span>
+                           <span>Add Example</span>
                          </>
                        )}
                      </button>
