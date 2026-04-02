@@ -48,17 +48,25 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, result, proj
     }
   };
 
-  const handleDownloadYaml = () => {
-    const code = generatedCode['openapi'];
-    if (code) {
-        const blob = new Blob([code], { type: 'text/yaml' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${projectName.replace(/\s+/g, '_').toLowerCase()}.yaml`;
-        a.click();
-        URL.revokeObjectURL(url);
-    }
+  const FILE_EXT: Record<CodeLanguage, string> = {
+    typescript: 'ts',
+    python: 'py',
+    zod: 'ts',
+    openapi: 'yaml',
+  };
+
+  const handleDownload = (lang: CodeLanguage) => {
+    const code = generatedCode[lang];
+    if (!code) return;
+    const ext = FILE_EXT[lang];
+    const mime = ext === 'yaml' ? 'text/yaml' : 'text/plain';
+    const blob = new Blob([code], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${projectName.replace(/\s+/g, '_').toLowerCase()}.${ext}`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (!isOpen) return null;
@@ -107,16 +115,16 @@ const ExportModal: React.FC<ExportModalProps> = ({ isOpen, onClose, result, proj
             )}
             
             <div className="absolute top-4 right-4 flex gap-2">
-              {selectedLang === 'openapi' && (
-                <button 
-                  onClick={handleDownloadYaml}
+              {generatedCode[selectedLang] && (
+                <button
+                  onClick={() => handleDownload(selectedLang)}
                   className="bg-surface-container-high hover:bg-surface-variant text-on-surface px-4 py-2 rounded-lg text-sm font-bold shadow-lg transition-all flex items-center gap-2 border border-surface-variant/20"
                 >
                   <span className="material-symbols-outlined text-lg">download</span>
-                  <span className="hidden sm:inline">Download YAML</span>
+                  <span className="hidden sm:inline">Download .{FILE_EXT[selectedLang]}</span>
                 </button>
               )}
-              <button 
+              <button
                 onClick={handleCopyCode}
                 className="bg-primary text-background px-4 py-2 rounded-lg text-sm font-bold shadow-lg hover:bg-primary/90 transition-all flex items-center gap-2"
               >
