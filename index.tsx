@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import { App } from './App';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string | null }> {
@@ -36,5 +37,6 @@ root.render(
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
+    <Analytics />
   </React.StrictMode>
 );
