@@ -516,7 +516,7 @@ export const App: React.FC = () => {
   if (!user) {
     return (
       <div className="flex flex-col bg-background text-on-surface font-sans min-h-screen relative">
-        <header className="relative shrink-0 bg-background flex items-center justify-between px-4 lg:px-10 h-16 z-10">
+        <header className="absolute top-0 left-0 right-0 bg-transparent flex items-center justify-between px-4 lg:px-10 h-16 z-20">
           <h1 className="text-xl font-medium tracking-tight">ProtocolSense</h1>
           <button
             onClick={handleSignIn}
