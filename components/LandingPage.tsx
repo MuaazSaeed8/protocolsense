@@ -92,10 +92,10 @@ const HOW_IT_WORKS = [
 
 const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
   return (
-    <div className="flex-1 flex flex-col items-center px-6 min-h-0 overflow-y-auto custom-scrollbar relative">
+    <div className="flex-1 flex flex-col items-center min-h-0 overflow-y-auto custom-scrollbar relative">
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <div className="relative w-full -mx-6 flex flex-col items-center justify-center min-h-screen pt-16 pb-24 overflow-hidden">
+      <div className="relative w-full flex flex-col items-center justify-center min-h-screen pt-16 pb-24 overflow-hidden">
         {/* Video background */}
         <video
           className="absolute inset-0 w-full h-full object-cover z-0"
@@ -138,7 +138,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
       </div>
 
       {/* ── Feature cards ───────────────────────────────────────────────── */}
-      <div className="max-w-3xl w-full mt-24 grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="max-w-3xl w-full mt-24 px-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
         {FEATURES.map(f => (
           <div key={f.title} className="bg-surface-container rounded-md3-item p-5 space-y-3 border border-surface-variant/10">
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${f.bg}`}>
@@ -151,7 +151,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
       </div>
 
       {/* ── How it works ────────────────────────────────────────────────── */}
-      <div className="max-w-3xl w-full mt-28 space-y-10">
+      <div className="max-w-3xl w-full mt-28 px-6 space-y-10">
         <div className="text-center space-y-2">
           <h2 className="text-2xl lg:text-3xl font-medium tracking-tight">How it works</h2>
           <p className="text-sm text-on-surface-variant/60">Three steps from examples to production-ready rules.</p>
@@ -170,7 +170,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
       </div>
 
       {/* ── Bento grid — See it in action ───────────────────────────────── */}
-      <div className="max-w-5xl w-full mt-28 space-y-6">
+      <div className="max-w-5xl w-full mt-28 px-6 space-y-6">
         <div className="text-center space-y-2">
           <h2 className="text-2xl lg:text-3xl font-medium tracking-tight">See it in action</h2>
           <p className="text-sm text-on-surface-variant/60">A live look at what ProtocolSense surfaces from raw examples.</p>
@@ -246,7 +246,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
       </div>
 
       {/* ── Footer note ─────────────────────────────────────────────────── */}
-      <p className="mt-24 mb-10 text-xs text-on-surface-variant/40">No credit card required &middot; Sign in to save and load your protocols</p>
+      <p className="mt-24 mb-10 px-6 text-xs text-on-surface-variant/40">No credit card required &middot; Sign in to save and load your protocols</p>
 
     </div>
   );
