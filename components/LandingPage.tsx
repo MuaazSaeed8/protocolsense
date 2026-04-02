@@ -95,7 +95,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onSignIn }) => {
     <div className="flex-1 flex flex-col items-center px-6 min-h-0 overflow-y-auto custom-scrollbar relative">
 
       {/* ── Hero ────────────────────────────────────────────────────────── */}
-      <div className="relative w-full flex flex-col items-center justify-center min-h-screen pt-16 pb-24 overflow-hidden">
+      <div className="relative w-full -mx-6 flex flex-col items-center justify-center min-h-screen pt-16 pb-24 overflow-hidden">
         {/* Video background */}
         <video
           className="absolute inset-0 w-full h-full object-cover z-0"
