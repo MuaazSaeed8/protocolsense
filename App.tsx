@@ -100,6 +100,7 @@ export const App: React.FC = () => {
   const [showDiagnosisModal, setShowDiagnosisModal] = useState(false);
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
 
+  const [mobileTab, setMobileTab] = useState<'examples' | 'results'>('examples');
   const [inputMode, setInputMode] = useState<'json' | 'nl'>('nl');
   const [nlInputText, setNlInputText] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -230,6 +231,7 @@ export const App: React.FC = () => {
     setExamples(loadedExamples);
     setResult(loadedResult);
     setStatus(AnalysisStatus.SUCCESS);
+    setMobileTab('results');
     setError(null);
     setChatMessages([]);
   };
@@ -370,6 +372,7 @@ export const App: React.FC = () => {
       const data = await analyzeProtocol(scenario.examples);
       setResult(data);
       setStatus(AnalysisStatus.SUCCESS);
+      setMobileTab('results');
     } catch (e) {
       console.error(e);
       setError((e as Error).message || "The protocol analysis engine encountered an issue.");
@@ -392,6 +395,7 @@ export const App: React.FC = () => {
       const data = await analyzeProtocol(valid);
       setResult(data);
       setStatus(AnalysisStatus.SUCCESS);
+      setMobileTab('results');
 
       if (prevResult) {
         const prevRulesJson = JSON.stringify(prevResult.rules);
@@ -612,7 +616,23 @@ export const App: React.FC = () => {
       </header>
 
       <main className="flex-1 flex flex-col lg:flex-row lg:overflow-hidden">
-        <aside id="tour-examples" className="w-full lg:w-[400px] flex flex-col shrink-0 bg-background px-4 lg:px-8 py-4 border-b lg:border-b-0 lg:border-r border-surface-variant/5 h-auto lg:h-full lg:overflow-hidden">
+        {/* Mobile tab bar */}
+        <div className="lg:hidden flex shrink-0 border-b border-surface-variant/10 bg-background">
+          <button
+            onClick={() => setMobileTab('examples')}
+            className={`flex-1 py-3 text-sm font-bold transition-all border-b-2 ${mobileTab === 'examples' ? 'text-primary border-primary' : 'text-on-surface-variant border-transparent'}`}
+          >
+            Examples
+          </button>
+          <button
+            onClick={() => setMobileTab('results')}
+            className={`flex-1 py-3 text-sm font-bold transition-all border-b-2 ${mobileTab === 'results' ? 'text-primary border-primary' : 'text-on-surface-variant border-transparent'}`}
+          >
+            Results
+          </button>
+        </div>
+
+        <aside id="tour-examples" className={`w-full lg:w-[400px] flex-col shrink-0 bg-background px-4 lg:px-8 py-4 border-b lg:border-b-0 lg:border-r border-surface-variant/5 h-auto lg:h-full lg:overflow-hidden ${mobileTab === 'examples' ? 'flex' : 'hidden lg:flex'}`}>
           <div className="flex items-center justify-between mb-4 lg:mb-6">
             <div className="flex items-center gap-3">
               <h2 className="text-xl lg:text-2xl font-medium tracking-tight">Training set</h2>
@@ -728,7 +748,7 @@ export const App: React.FC = () => {
           )}
         </aside>
 
-        <section className="flex-1 overflow-x-hidden bg-surface-container/30 px-4 lg:px-10 py-6 lg:py-10 space-y-8 lg:rounded-tl-[48px] relative lg:overflow-y-auto custom-scrollbar">
+        <section className={`flex-1 overflow-x-hidden bg-surface-container/30 px-4 lg:px-10 py-6 lg:py-10 space-y-8 lg:rounded-tl-[48px] relative lg:overflow-y-auto custom-scrollbar ${mobileTab === 'results' ? 'block' : 'hidden lg:block'}`}>
           {status === AnalysisStatus.IDLE && !examples.some(e => e.input.trim() || e.output.trim()) && (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000 py-10 lg:py-0">
                <div className="space-y-6">
